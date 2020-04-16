@@ -1,0 +1,104 @@
+﻿@inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider authStateProvider
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+
+<AuthorizeView>
+    <Authorized>
+        Hello, @context.User.Identity.Name!
+        <button type="button" @onclick="LogoutAsync"><i class="fa fa-sign-out"></i> Log out</button>
+    </Authorized>
+    <NotAuthorized Context="authorizeContext">
+        Login
+
+        <EditForm Model="LoginModel" OnValidSubmit="LoginAsync" class="form-inline">
+            <DataAnnotationsValidator />
+
+            <label for="Email">E-mail</label>
+            <InputText type="email" name="Email" class="form-control" @bind-Value="LoginModel.Email" />
+            <ValidationMessage For="@(() => LoginModel.Email)" />
+
+            <label for="Password">Password</label>
+            <InputText type="password" name="Password" placeholder="*****" class="form-control" @bind-Value="LoginModel.Password" />
+            <ValidationMessage For="@(() => LoginModel.Password)" />
+
+            <button type="submit" class="btn btn-primary"><i class="fa fa-sign-in"></i> Log in</button>
+        </EditForm>
+
+        Register
+        <EditForm Model="RegistrationModel" OnValidSubmit="RegisterAsync" class="form-inline">
+            <DataAnnotationsValidator />
+
+            <label for="Email">E-mail</label>
+            <InputText type="email" name="Email" placeholder="váš@email.cz" class="form-control" @bind-Value="RegistrationModel.Email" />
+            <ValidationMessage For="@(() => RegistrationModel.Email)" />
+
+            <label for="Password">Password</label>
+            <InputText type="password" name="Password" placeholder="******" class="form-control" @bind-Value="RegistrationModel.Password" />
+            <ValidationMessage For="@(() => RegistrationModel.Password)" />
+
+            <label for="ConfirmPassword">Confirm password</label>
+            <InputText type="password" name="ConfirmPassword" placeholder="******" class="form-control" @bind-Value="RegistrationModel.ConfirmPassword" />
+            <ValidationMessage For="@(() => RegistrationModel.ConfirmPassword)" />
+
+            <button type="submit" class="btn btn-success"><i class="fa fa-check"></i> Register</button>
+        </EditForm>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code
+{
+    RegisterViewModel RegistrationModel = new RegisterViewModel();
+    LoginViewModel LoginModel = new LoginViewModel();
+
+    async Task RegisterAsync()
+    {
+        try
+        {
+            await (authStateProvider as IdentityAuthenticationStateProvider).RegisterAsync(RegistrationModel);
+
+            UserInfo userInfo = await (authStateProvider as IdentityAuthenticationStateProvider).GetUserInfoAsync();
+
+            await JSRuntime.InvokeVoidAsync("AddLoginCookies", userInfo.Cookie);
+            await localStorage.SetItemAsync("Login", userInfo.Cookie);
+        }
+        catch (Exception ex)
+        {
+        }
+
+        StateHasChanged();
+    }
+
+    async Task LoginAsync()
+    {
+        try
+        {
+            await (authStateProvider as IdentityAuthenticationStateProvider).LoginAsync(LoginModel);
+
+            UserInfo userInfo = await (authStateProvider as IdentityAuthenticationStateProvider).GetUserInfoAsync();
+
+            await JSRuntime.InvokeVoidAsync("AddLoginCookies", userInfo.Cookie);
+            await localStorage.SetItemAsync("Login", userInfo.Cookie);
+        }
+        catch (Exception ex)
+        {
+        }
+
+        StateHasChanged();
+    }
+
+    async Task LogoutAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("ClearLoginCookies");
+            await localStorage.RemoveItemAsync("Login");
+
+            await (authStateProvider as IdentityAuthenticationStateProvider).LogoutAsync();
+        }
+        catch
+        {
+        }
+
+        StateHasChanged();
+    }
+}
